@@ -146,11 +146,12 @@ WebServer server(80);
 void reconnect() { // tái kết nối lại với MQTT
   while (!client.connected()) {
     // Serial.print("Đang kết nối MQTT...");
+  if(client.connected()) return;
   if (client.connect("ESP32Client", mqtt_user, mqtt_pass)) {
-    // Serial.println("Đã kết nối MQTT.");
+    Serial.println("Đã kết nối MQTT.");
   client.subscribe(led_topic);
 } else {
-  // Serial.printf("Kết nối thất bại. Mã lỗi: %d\n", client.state());
+  Serial.printf("Kết nối thất bại. Mã lỗi: %d\n", client.state());
   delay(5000);
     }
   }
@@ -353,6 +354,79 @@ PublishACK(doc, type, id, cron, name);
 } 
 }
 
+void setup() {
+  Serial.begin(115200);
+  EEPROM.begin(EEPROM_SIZE);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+  char ssid[33] = "";
+  char password[65] = "";
+  loadWiFiCredentials(ssid, password);
+
+  Serial.printf("Đọc từ EEPROM - SSID: %s, Password: %s\n", ssid, password);
+
+  if (strlen(ssid) == 0 || strlen(password) == 0) {
+    // ❌ Chưa có WiFi → bật AP để người dùng nhập
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(apSSID, apPassword);
+    // Serial.println("Access Point Started");
+    // Serial.println(WiFi.softAPIP());
+
+    server.on("/", handleRoot);
+    server.on("/submit", HTTP_POST, handleSubmit);
+    server.begin();
+    // Serial.println("HTTP server started");
+  } else {
+    // ✅ Có WiFi → thử kết nối
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+
+    // Serial.print("Đang kết nối WiFi");
+    unsigned long startConnectTime = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - startConnectTime < 15000) {
+      // delay(500);
+      // Serial.print(".");
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+      // Serial.println("\n✅ Kết nối WiFi thành công! IP: " + WiFi.localIP().toString());
+      wifiConfigured = true;
+    } else {
+      // Serial.println("\n❌ Kết nối WiFi thất bại! Chuyển về chế độ AP để cấu hình lại.");
+      WiFi.disconnect();
+      WiFi.mode(WIFI_AP);
+      WiFi.softAP(apSSID, apPassword);
+      // Serial.println("Access Point Started");
+      // Serial.println(WiFi.softAPIP());
+
+      server.on("/", handleRoot);
+      server.on("/submit", HTTP_POST, handleSubmit);
+      server.begin();
+      // Serial.println("HTTP server started (AP mode).");
+    }
+  }
+
+  client.setServer(mqtt_server, mqtt_port);
+  client.setBufferSize(512);
+  client.setCallback(callbackHandlePackage);
+
+  xTaskCreate(pingMQTTTask, "Ping MQTT Task", 4096, NULL, 1, NULL);
+  xTaskCreate(checkResetButtonTask, "Check Reset Button", 2048, NULL, 1, NULL);
+}
+
+void loop() {
+  if (WiFi.status() == WL_CONNECTED) {
+    if (!wifiConfigured) {
+      wifiConfigured = true;
+      // Serial.println("WiFi connected, switching to operational mode.");
+    }
+    setup_wifi();
+    reconnect();
+    client.loop();
+  }
+  server.handleClient();
+}
 
 
 
