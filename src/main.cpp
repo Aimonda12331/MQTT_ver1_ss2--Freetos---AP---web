@@ -142,20 +142,17 @@ WebServer server(80);
   }
 // Serial.println("\nĐã kết nối WiFi.");
 }
-
 void reconnect() { // tái kết nối lại với MQTT
-  while (!client.connected()) {
-    // Serial.print("Đang kết nối MQTT...");
-  if(client.connected()) return;
+    delay(5000);    
   if (client.connect("ESP32Client", mqtt_user, mqtt_pass)) {
     Serial.println("Đã kết nối MQTT.");
   client.subscribe(led_topic);
 } else {
   Serial.printf("Kết nối thất bại. Mã lỗi: %d\n", client.state());
-  delay(5000);
+
     }
   }
-}
+
 
 // Xử lý sự kiện AccessPoint
 void handleRoot() {
