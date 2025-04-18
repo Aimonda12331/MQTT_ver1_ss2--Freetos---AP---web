@@ -27,6 +27,9 @@ bool wifiConfigured = false; // Cờ kiểm tra xem đã cấu hình WiFi chưa
   const unsigned long cronInterval = 1000;  // Kiểm tra mỗi 100 ms
   unsigned long thoigianBatLED = 0;  // Lưu thời gian bật LED để tắt led sau 5 giây
 
+  unsigned long lastReconnectAttempt = 0;
+  const unsigned long reconnectInterval = 10000; // thử lại mỗi 10 giây
+
 // Khai báo các thông tin MQTT
   const char* mqtt_server = "product.skytechnology.vn";
   const int mqtt_port = 7855;
@@ -142,14 +145,13 @@ WebServer server(80);
   }
 // Serial.println("\nĐã kết nối WiFi.");
 }
+
 void reconnect() { // tái kết nối lại với MQTT
-    delay(5000);    
   if (client.connect("ESP32Client", mqtt_user, mqtt_pass)) {
     Serial.println("Đã kết nối MQTT.");
   client.subscribe(led_topic);
 } else {
   Serial.printf("Kết nối thất bại. Mã lỗi: %d\n", client.state());
-
     }
   }
 
@@ -346,6 +348,7 @@ if(status != ledhientai){
 digitalWrite(LED_PIN, status ? HIGH : LOW);
 // Serial.println(status ? "LED Bật" : "LED Tắt");
 ledhientai = status;
+  Serial.print(status);
 PublishACK(doc, type, id, cron, name);
 }
 } 
@@ -418,9 +421,16 @@ void loop() {
       wifiConfigured = true;
       // Serial.println("WiFi connected, switching to operational mode.");
     }
-    setup_wifi();
-    reconnect();
-    client.loop();
+    // Không gọi lại setup_wifi(); // đã kết nối rồi
+    if (!client.connected()) {
+      unsigned long now = millis();
+      if (now - lastReconnectAttempt > reconnectInterval) {
+        lastReconnectAttempt = now;
+        reconnect();
+      }
+    } else {
+      client.loop(); // chỉ gọi nếu đã kết nối
+    }
   }
   server.handleClient();
 }
