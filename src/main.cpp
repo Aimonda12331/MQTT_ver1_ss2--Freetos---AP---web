@@ -37,8 +37,8 @@ bool wifiConfigured = false; // Cờ kiểm tra xem đã cấu hình WiFi chưa
   const char* mqtt_pass = "2b51fdbd-7f35-48c9-ab76-08e025d3530f"; //thingkey
   const char* led_topic = "channels/2d4e0ea3-086d-4ea5-a9e7-c2b92e7418d7/messages"; //id
  
-  const char* notify_id = "2b51fdbd-7f35-48c9-ab76-08e025d3530f"; // Thay bằng notify_id thực tế
-  const char* thing_id = "8375ffcf-f704-4717-a96c-69b42b602b0d"; // Thay bằng ID thiết bị thực tế
+  const char* notify_id = "2690d9a9-34d9-4c6e-b802-5c6a0e1ea5f1"; // Thay bằng notify_id thực tế
+  const char* thing_id = "67f62bea3d1dcd19f88307f6"; // Thay bằng ID thiết bị thực tế
 
   WiFiClient espClient;
   PubSubClient client(espClient);
@@ -154,7 +154,6 @@ void reconnect() { // tái kết nối lại với MQTT
   Serial.printf("Kết nối thất bại. Mã lỗi: %d\n", client.state());
     }
   }
-
 
 // Xử lý sự kiện AccessPoint
 void handleRoot() {
@@ -390,7 +389,7 @@ void setup() {
     }
 
     if (WiFi.status() == WL_CONNECTED) {
-      // Serial.println("\n✅ Kết nối WiFi thành công! IP: " + WiFi.localIP().toString());
+      // Serial.println("\n  Kết nối WiFi thành công! IP: " + WiFi.localIP().toString());
       wifiConfigured = true;
     } else {
       // Serial.println("\n❌ Kết nối WiFi thất bại! Chuyển về chế độ AP để cấu hình lại.");
@@ -425,7 +424,11 @@ void loop() {
     if (!client.connected()) {
       unsigned long now = millis();
       if (now - lastReconnectAttempt > reconnectInterval) {
-        lastReconnectAttempt = now;
+        lastReconnectAttempt = now; 
+
+
+        // ✅ Thêm điều kiện: chỉ reconnect nếu PING trước đó thật sự thất bại nhiều lần
+        Serial.println("Đã mất kết nối MQTT. Đang thử reconnect...");
         reconnect();
       }
     } else {
