@@ -8,6 +8,7 @@
 #include <ArduinoJson.h>
 #include <EEPROM.h> // thư viện bộ nhớ flash
 #include <WebServer.h> 
+#include <esp_wifi.h> // thư viện sleepmode
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -53,6 +54,10 @@ String password = "";
 
 // Tạo server web
 WebServer server(80);
+
+void enableModemSleep() { //hàm sleep mode 
+  esp_wifi_set_ps(WIFI_PS_MIN_MODEM);  // hoặc MAX
+}
 
 //Lưu WiFi
   void saveWiFiCredentials(const char* ssid, const char* password) {
@@ -381,6 +386,7 @@ void setup() {
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
 
+
     // Serial.print("Đang kết nối WiFi");
     unsigned long startConnectTime = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - startConnectTime < 15000) {
@@ -391,6 +397,9 @@ void setup() {
     if (WiFi.status() == WL_CONNECTED) {
       // Serial.println("\n  Kết nối WiFi thành công! IP: " + WiFi.localIP().toString());
       wifiConfigured = true;
+       // ✅ Bật chế độ tiết kiệm năng lượng cho WiFi
+      esp_wifi_set_ps(WIFI_PS_MIN_MODEM); // Hoặc WiFi.setSleep(true);
+
     } else {
       // Serial.println("\n❌ Kết nối WiFi thất bại! Chuyển về chế độ AP để cấu hình lại.");
       WiFi.disconnect();
